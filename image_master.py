@@ -1,53 +1,52 @@
-import os
 import base64
-from openai import OpenAI
-from PIL import Image
-from io import BytesIO
-
+import os
 import cloudinary
 import cloudinary.uploader
+from openai import OpenAI
+from datetime import datetime
 
-# ---------- Cloudinary Config ----------
+client = OpenAI()
+
+# ---------- Cloudinary ----------
 cloudinary.config(
     cloud_name=os.getenv("CLOUD_NAME"),
     api_key=os.getenv("CLOUD_API_KEY"),
     api_secret=os.getenv("CLOUD_API_SECRET")
 )
 
+# ---------- Folders ----------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
 def upload_image(file_path):
     result = cloudinary.uploader.upload(file_path)
     return result["secure_url"]
 
 
-# ---------- OpenAI Client ----------
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-
 def generate_image(prompt):
-    print("\n🎨 Generating image with prompt:\n", prompt)
+    print("🎨 Generating image...")
 
-    result = client.images.generate(
+    img = client.images.generate(
         model="gpt-image-1",
         prompt=prompt,
-        size="1024x1024",
-        background="transparent"
+        size="1024x1024"
     )
 
-    image_base64 = result.data[0].b64_json
-    image_bytes = base64.b64decode(image_base64)
-    image = Image.open(BytesIO(image_bytes))
+    image_bytes = img.data[0].b64_json
+    file_name = f"design_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    local_path = os.path.join(OUTPUT_DIR, file_name)
 
-    # Temporary save
-    if not os.path.exists("temp"):
-        os.makedirs("temp")
+    # ✅ SAVE LOCALLY (this fixes empty folders)
+    with open(local_path, "wb") as f:
+        f.write(base64.b64decode(image_bytes))
 
-    path = f"temp/design.png"
-    image.save(path)
+    print("💾 Saved locally:", local_path)
 
-    # Upload to Cloudinary
-    url = upload_image(path)
-    print("✅ Image URL:", url)
+    # ✅ Upload to Cloudinary
+    url = upload_image(local_path)
+    print("☁️ Cloudinary URL:", url)
 
-    return url
-
+    return local_path, url
 

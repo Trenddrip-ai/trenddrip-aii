@@ -1,77 +1,82 @@
-from trend_engine import build_prompt
-from prompt_evolver import evolve_prompt
-from image_master import generate_image
-from design_upscaler import upscale_image
-from pod_formatter import format_for_pod
-from listing_writer import create_listing
-from file_namer import clean_filename
 import os
-import shutil
 from datetime import datetime
 
+from trend_engine import build_prompt
+from prompt_evolver import evolve_prompt
+from listing_writer import create_listing
+from file_namer import clean_filename
+from image_master import generate_image
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-print("""
-🚀 TrendDrip Super Machine Running...
-
-Choose your design style:
-1 - Graffiti Mascots
-2 - Street Typography
-3 - Anime Streetwear
-4 - Logo Emblems
-""")
-
-style = input("Enter choice (1-4): ")
-count = int(input("How many designs do you want to generate? "))
-
-style_names = {
-    "1": "Graffiti_Mascots",
-    "2": "Street_Typography",
-    "3": "Anime_Streetwear",
-    "4": "Logo_Emblems"
-}
-
-date_stamp = datetime.now().strftime("%Y-%m-%d")
-collection_folder = f"{style_names.get(style, 'Collection')}_{date_stamp}"
-
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs", collection_folder)
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-for i in range(count):
-    print(f"\n--- Design {i+1} ---")
 
-    prompt = build_prompt(style)
-    smart_prompt = evolve_prompt(prompt)
+def run_trenddrip(style, count):
+    print("\n🚀 TrendDrip Super Machine Running...\n")
 
-    raw = generate_image(smart_prompt)
-    upscaled = upscale_image(raw)
-    final = format_for_pod(upscaled)
+    style_names = {
+        "1": "Graffiti_Mascots",
+        "2": "Street_Typography",
+        "3": "Anime_Streetwear",
+        "4": "Logo_Emblems"
+    }
 
-    listing = create_listing(smart_prompt)
+    style_folder = style_names.get(style, "Graffiti_Mascots")
+    dated_folder = f"{style_folder}_{datetime.now().strftime('%Y-%m-%d')}"
+    full_output_path = os.path.join(OUTPUT_DIR, dated_folder)
+    os.makedirs(full_output_path, exist_ok=True)
 
-    # Extract title
-    lines = listing.split("\n")
-    title = ""
-    for line in lines:
-        if "title" in line.lower():
-            continue
-        if line.strip() and len(line) > 10:
-            title = line.strip()
-            break
+    results = []
 
-    safe_name = clean_filename(title)
+    for i in range(count):
+        print(f"\n🎨 --- Design {i+1} ---\n")
 
-    img_path = os.path.join(OUTPUT_DIR, f"{safe_name}.png")
-    txt_path = os.path.join(OUTPUT_DIR, f"{safe_name}.txt")
+        # ---------- Prompt ----------
+        prompt = build_prompt(style_folder)
+        smart_prompt = evolve_prompt(prompt)
 
-    if os.path.exists(img_path):
-        os.remove(img_path)
-    if os.path.exists(txt_path):
-        os.remove(txt_path)
+        # ---------- Listing ----------
+        listing = create_listing(smart_prompt)
 
-    shutil.move(final, img_path)
+        # Extract title from listing
+        lines = listing.split("\n")
+        title = "Streetwear Design"
 
-    with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(listing)
+        for line in lines:
+            if "title" in line.lower():
+                continue
+            if line.strip() and len(line) > 10:
+                title = line.strip()
+                break
 
-print(f"\n✅ Designs saved in: {OUTPUT_DIR}\n")
+        safe_name = clean_filename(title)
+
+        # ---------- Image Generation ----------
+        local_path, image_url = generate_image(smart_prompt)
+
+        # Move image into this design folder
+        final_img_path = os.path.join(full_output_path, f"{safe_name}.png")
+        os.rename(local_path, final_img_path)
+
+        # ---------- Save TXT ----------
+        txt_path = os.path.join(full_output_path, f"{safe_name}.txt")
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(listing)
+
+        print("✅ Saved:", final_img_path)
+        print("☁️ URL:", image_url)
+
+        results.append({
+            "title": title,
+            "image_url": image_url,
+            "local_path": final_img_path,
+            "listing": listing
+        })
+
+    print(f"\n✅ Designs saved in: {full_output_path}\n")
+    return results
+
+
+
