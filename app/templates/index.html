@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TrendDrip AI</title>
+    <style>
+        body { background:#0b0b0b;color:white;text-align:center;font-family:Arial;margin-top:60px; }
+        img { width:240px;margin:10px;border:3px solid #00ff9d; }
+        button { padding:12px;margin:10px;font-size:18px;background:#00ff9d;border:none;cursor:pointer; }
+    </style>
+</head>
+<body>
+
+<h1>🔥 TrendDrip AI Design Generator</h1>
+
+<select id="style">
+    <option value="1">Graffiti Mascots</option>
+    <option value="2">Street Typography</option>
+    <option value="3">Anime Streetwear</option>
+    <option value="4">Logo Emblems</option>
+    <option value="5">Cyberpunk Skull</option>
+    <option value="6">Retro Cartoon</option>
+</select>
+
+<br>
+<input type="number" id="count" value="3" />
+<br>
+
+<button onclick="generate()">Generate Collection</button>
+
+<div id="gallery"></div>
+
+<script>
+async function generate(){
+    const style = document.getElementById("style").value;
+    const count = document.getElementById("count").value;
+
+    document.getElementById("gallery").innerHTML="Generating...";
+
+    const res = await fetch("/generate",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({style:parseInt(style),count:parseInt(count)})
+    });
+
+    const data = await res.json();
+
+    let html="";
+    data.images.forEach(img=>{
+        html+=`<img src="/${img}" />`;
+    });
+
+    document.getElementById("gallery").innerHTML=html;
+
+    window.location.href="/download/"+data.zip;
+}
+</script>
+
+</body>
+</html>
+
